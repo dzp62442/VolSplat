@@ -1,0 +1,4 @@
+name: evaluation
+
+index_path: assets/re10k_evaluation/re10k_ctx_6v_tgt_8v_n50.json
+num_context_views: 2
