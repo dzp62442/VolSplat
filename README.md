@@ -82,7 +82,7 @@ Our pre-trained models and baseline models are hosted on [Hugging Face](https://
 | mvsplat-re10k-baseline-256x256    | [download](https://huggingface.co/lhmd/VolSplat/resolve/main/mvsplat-re10k-baseline-256x256.ckpt) |
 | transplat-re10k-baseline-256x256  | [download](https://huggingface.co/lhmd/VolSplat/resolve/main/transplat-re10k-baseline-256x256.ckpt) |
 | depthsplat-re10k-baseline-256x256 | [download](https://huggingface.co/lhmd/VolSplat/resolve/main/depthsplat-re10k-baseline-256x256.ckpt) |
-| ggn-re10k-re10k-baseline-256x256  | [download](https://huggingface.co/lhmd/VolSplat/resolve/main/ggn-re10k-re10k-baseline-256x256.ckpt) |
+| ggn-re10k-baseline-256x256  | [download](https://huggingface.co/lhmd/VolSplat/resolve/main/ggn-re10k-baseline-256x256.ckpt) |
 
 ## Datasets
 
