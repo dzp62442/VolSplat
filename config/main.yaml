@@ -7,8 +7,7 @@ defaults:
 
 wandb:
   project: VolSplat
-  entity: null
-  name: "VolSplat"
+  entity: dzp62442-DROPS
   mode: online
   tags: ["experiment", "VolSplat"]
   id: null

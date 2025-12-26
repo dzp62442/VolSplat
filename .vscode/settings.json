@@ -1,0 +1,8 @@
+{
+    "search.exclude": {
+      
+    },
+    "files.watcherExclude": {
+        "datasets": true,
+    }
+  }

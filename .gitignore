@@ -167,7 +167,6 @@ models/*
 datasets/*
 pretrained/*
 .idea/*
-.vscode/*
 .hydra/*
 .claude/*
 CLAUDE.md

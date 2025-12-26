@@ -55,11 +55,13 @@ Pixel-aligned feed-forward 3DGS methods suffer from two primary limitations: 1) 
 
 Our code is developed and tested with **PyTorch 2.4.0**, **CUDA 12.1**, and **Python 3.10**.
 
+> 使用 CUDA 11.8 进行复现，其他不变
+
 ```bash
 conda create -n volsplat python=3.10
 conda activate volsplat
 
-pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu121
+pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 
 # Install MinkowskiEngine
@@ -67,7 +69,8 @@ pip install -r requirements.txt
 conda install -c conda-forge openblas
 pip install ninja
 cd MinkowskiEngine
-python setup.py install
+pip install setuptools==69.1.1
+python setup.py install --blas=openblas --blas_include_dirs=$CONDA_PREFIX/include --blas_library_dirs=$CONDA_PREFIX/lib
 cd ..
 ```
 
