@@ -1,3 +1,41 @@
+在 OmniScene 数据集上与 SVF-GS 进行对比
+
+### 训练
+
+- **112×200 分辨率（Base/ViT-B 设置）**
+```bash
+python -m src.main +experiment=omniscene_112x200 \
+model.encoder.num_scales=2 \
+model.encoder.upsample_factor=2 \
+model.encoder.lowest_feature_resolution=4 \
+model.encoder.monodepth_vit_type=vitb \
+checkpointing.pretrained_monodepth=pretrained/depth_anything_v2_vitb.pth \
+checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
+output_dir=checkpoints/omniscene-112x200-volsplat-base
+```
+
+> 若需 small/large 变体，仅需调整 `model.encoder.num_scales / upsample_factor / monodepth_vit_type` 以及对应的预训练权重路径。
+
+### 测试
+
+训练完成后，可在相同的实验配置下切换到测试模式，并指定已完成的 checkpoint 路径：
+
+- **112×200 测试**
+```bash
+python -m src.main +experiment=omniscene_112x200 \
+mode=test \
+model.encoder.num_scales=2 \
+model.encoder.upsample_factor=2 \
+model.encoder.lowest_feature_resolution=4 \
+model.encoder.monodepth_vit_type=vitb \
+checkpointing.pretrained_model=checkpoints/omniscene-112x200-volsplat-base/checkpoints/epoch_0-step_100000.ckpt \
+output_dir=outputs/omniscene-112x200-volsplat-base
+```
+
+根据需求可额外启用 `test.save_image=true`、`test.save_gaussian=true` 等开关以导出可视化结果或点云。
+
+---
+
 <p align="center">
   <h1 align="center">VolSplat: Rethinking Feed-Forward 3D Gaussian Splatting with Voxel-Aligned Prediction</h1>
   <p align="center">

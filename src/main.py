@@ -92,18 +92,22 @@ def train(cfg_dict: DictConfig):
     if cfg_dict["mode"] == "train" and cfg_dict["train"]["eval_model_every_n_val"] > 0:
         eval_cfg_dict = copy.deepcopy(cfg_dict)
         dataset_dir = str(cfg_dict["dataset"]["roots"]).lower()
-        if "re10k" in dataset_dir:
+        dataset_name = cfg_dict["dataset"]["name"]
+        if dataset_name == "omniscene":
+            eval_cfg = load_typed_root_config(eval_cfg_dict)
+        elif "re10k" in dataset_dir:
             eval_path = "assets/evaluation_index_re10k.json"
         elif "scannet" in dataset_dir:
             eval_path = "assets/evaluation_index_scannet_3views.json"
         else:
             raise Exception("Fail to load eval index path")
-        eval_cfg_dict["dataset"]["view_sampler"] = {
-            "name": "evaluation",
-            "index_path": eval_path,
-            "num_context_views": cfg_dict["dataset"]["view_sampler"]["num_context_views"],
-        }
-        eval_cfg = load_typed_root_config(eval_cfg_dict)
+        if dataset_name != "omniscene":
+            eval_cfg_dict["dataset"]["view_sampler"] = {
+                "name": "evaluation",
+                "index_path": eval_path,
+                "num_context_views": cfg_dict["dataset"]["view_sampler"]["num_context_views"],
+            }
+            eval_cfg = load_typed_root_config(eval_cfg_dict)
     else:
         eval_cfg = None
 

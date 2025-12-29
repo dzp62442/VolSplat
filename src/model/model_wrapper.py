@@ -98,6 +98,7 @@ class TrainCfg:
     forward_depth_only: bool
     train_ignore_large_loss: float
     no_log_projections: bool
+    use_dynamic_mask: bool
 
 
 @runtime_checkable
@@ -276,6 +277,18 @@ class ModelWrapper(LightningModule):
         total_loss = 0
 
         valid_depth_mask = None
+        if (
+            self.train_cfg.use_dynamic_mask
+            and "masks" in batch["target"]
+        ):
+            target_masks = batch["target"]["masks"]
+            if target_masks.dim() == 4:
+                valid_depth_mask = target_masks.unsqueeze(2).expand(
+                    -1, -1, target_gt.shape[2], -1, -1
+                )
+            else:
+                valid_depth_mask = target_masks
+            valid_depth_mask = ~valid_depth_mask
 
         for loss_fn in self.losses:
             if loss_fn.name == "mse":

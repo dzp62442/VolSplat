@@ -20,11 +20,16 @@ def apply_patch_shim_to_views(views: BatchedViews, patch_size: int) -> BatchedVi
     intrinsics[:, :, 0, 0] *= w / w_new  # fx
     intrinsics[:, :, 1, 1] *= h / h_new  # fy
 
-    return {
+    result = {
         **views,
         "image": image,
         "intrinsics": intrinsics,
     }
+
+    if "masks" in views:
+        result["masks"] = views["masks"][:, :, row : row + h_new, col : col + w_new]
+
+    return result
 
 
 def apply_patch_shim(batch: BatchedExample, patch_size: int) -> BatchedExample:
