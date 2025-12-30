@@ -14,7 +14,7 @@ checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
 output_dir=checkpoints/omniscene-112x200-volsplat-base
 ```
 
-> 若需 small/large 变体，仅需调整 `model.encoder.num_scales / upsample_factor / monodepth_vit_type` 以及对应的预训练权重路径。
+> 若需 small/large 变体，参考 DepthSplat 项目
 
 ### 测试
 
