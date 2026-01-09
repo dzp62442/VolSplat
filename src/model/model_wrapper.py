@@ -25,7 +25,7 @@ import math
 from ..dataset.data_module import get_data_shim
 from ..dataset.types import BatchedExample
 from ..dataset import DatasetCfg
-from ..evaluation.metrics import compute_lpips, compute_psnr, compute_ssim
+from ..evaluation.metrics import compute_lpips, compute_pcc, compute_psnr, compute_ssim
 from ..global_cfg import get_cfg
 from ..loss import Loss
 from ..misc.benchmarker import Benchmarker
@@ -501,6 +501,11 @@ class ModelWrapper(LightningModule):
                 if self.test_cfg.compute_scores:
                     decoder_start_time = time.time()
 
+                should_render_depth = (
+                    self.test_cfg.compute_scores and "rel_depth" in batch["target"]
+                )
+                depth_mode = "depth" if should_render_depth else None
+
                 camera_poses = batch["target"]["extrinsics"]
 
                 if self.test_cfg.stablize_camera:
@@ -542,7 +547,7 @@ class ModelWrapper(LightningModule):
                             render_near[:, start:end],
                             render_far[:, start:end],
                             (h, w),
-                            depth_mode=None,
+                            depth_mode=depth_mode,
                         )
 
                         if i == 0:
@@ -552,6 +557,13 @@ class ModelWrapper(LightningModule):
                             output.color = torch.cat(
                                 (output.color, curr_output.color), dim=1
                             )
+                            if depth_mode is not None and curr_output.depth is not None:
+                                if output.depth is None:
+                                    output.depth = curr_output.depth
+                                else:
+                                    output.depth = torch.cat(
+                                        (output.depth, curr_output.depth), dim=1
+                                    )
 
                 else:
                     output = self.decoder.forward(
@@ -561,7 +573,7 @@ class ModelWrapper(LightningModule):
                         batch["target"]["near"],
                         batch["target"]["far"],
                         (h, w),
-                        depth_mode=None,
+                        depth_mode=depth_mode,
                     )
 
                 # Record decoder time
@@ -691,6 +703,15 @@ class ModelWrapper(LightningModule):
                 c = compute_lpips(rgb_gt, rgb).mean().item()
                 print(f"scene:{scene},lpips:{c}")
 
+                if output.depth is not None and "rel_depth" in batch["target"]:
+                    if f"pcc" not in self.test_step_outputs:
+                        self.test_step_outputs[f"pcc"] = []
+                    rel_depth = batch["target"]["rel_depth"]
+                    pcc = compute_pcc(
+                        rearrange(rel_depth, "b v h w -> (b v) h w"),
+                        rearrange(output.depth, "b v h w -> (b v) h w"),
+                    )
+                    self.test_step_outputs[f"pcc"].append(pcc.item())
 
                 # 将scene和lpips写入txt文件
                 with open(path / "scene_lpips.txt", "a") as f:
@@ -1130,6 +1151,9 @@ class ModelWrapper(LightningModule):
                 scores_dict[score_tag] = {}
                 for method_tag in ("deterministic", "probabilistic"):
                     scores_dict[score_tag][method_tag] = []
+            scores_dict["pcc"] = {}
+            for method_tag in ("deterministic", "probabilistic"):
+                scores_dict["pcc"][method_tag] = []
 
         # evaluate depth
         if self.train_cfg.viz_depth:
@@ -1174,6 +1198,8 @@ class ModelWrapper(LightningModule):
                     gaussians_probabilistic = gaussians_probabilistic["gaussians"]
 
             if not self.train_cfg.forward_depth_only:
+                has_rel_depth = "rel_depth" in batch["target"]
+                depth_mode = "depth" if has_rel_depth else None
                 with self.benchmarker.time("decoder", num_calls=v):
                     output_probabilistic = self.decoder.forward(
                         gaussians_probabilistic,
@@ -1182,8 +1208,10 @@ class ModelWrapper(LightningModule):
                         batch["target"]["near"],
                         batch["target"]["far"],
                         (h, w),
+                        depth_mode=depth_mode,
                     )
                 rgbs = [output_probabilistic.color[0]]
+                outputs = [output_probabilistic]
                 tags = ["probabilistic"]
 
                 if self.train_cfg.eval_deterministic:
@@ -1199,13 +1227,15 @@ class ModelWrapper(LightningModule):
                         batch["target"]["near"],
                         batch["target"]["far"],
                         (h, w),
+                        depth_mode=depth_mode,
                     )
                     rgbs.append(output_deterministic.color[0])
+                    outputs.append(output_deterministic)
                     tags.append("deterministic")
 
                 # Compute validation metrics.
                 rgb_gt = batch["target"]["image"][0]
-                for tag, rgb in zip(tags, rgbs):
+                for tag, rgb, output in zip(tags, rgbs, outputs):
                     scores_dict["psnr"][tag].append(
                         compute_psnr(rgb_gt, rgb).mean().item()
                     )
@@ -1215,6 +1245,13 @@ class ModelWrapper(LightningModule):
                     scores_dict["ssim"][tag].append(
                         compute_ssim(rgb_gt, rgb).mean().item()
                     )
+                    if has_rel_depth and output.depth is not None:
+                        rel_depth = batch["target"]["rel_depth"]
+                        pcc = compute_pcc(
+                            rearrange(rel_depth, "b v h w -> (b v) h w"),
+                            rearrange(output.depth, "b v h w -> (b v) h w"),
+                        )
+                        scores_dict["pcc"][tag].append(pcc.item())
 
         # summarise scores and log to logger
         for score_tag, methods in scores_dict.items():

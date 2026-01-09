@@ -56,5 +56,20 @@
    - DepthSplat 的 `DatasetOmniScene` 中包含 `get_rays`、`load_rel_depth` 以及自定义的 `test.save_video_omniscene` 可视化，VolSplat 暂时不需要在第一阶段实现这些功能；若后续需要渲染环视视频，可在完成基础训练后再补充。
    - DepthSplat 默认在 `README` 中通过命令行直接设置 `train.use_dynamic_mask=true`；VolSplat 需要在配置层面显式新增该字段以保证 Hydra 校验通过。
 
+## PCC 指标补充方案（OmniScene 对比实验）
+1. **相对深度加载（仅 test）**：
+   - 参考 DepthSplat 的实现，在 `src/dataset/utils_omniscene.py::load_conditions` 里新增 `load_rel_depth` 开关：当开启时，读取 DepthAnything-v2 预测的 disparity（`samples_dpt_small`/`sweeps_dpt_small` 下 `.npy`），若发生 resize 则同步缩放；再按 DepthSplat 的规则将 disparity 转为相对深度：限制最大/最小比值为 50、取 `1 / disp` 并做 min-max 归一化到 `[0, 1]`。
+   - `DatasetOmniScene` 仅在 `stage="test"` 时开启 `load_rel_depth` 并把 `rel_depth` 写入 `target`，其余阶段直接返回 `None`，避免无谓的 IO。
+   - 若启用 patch shim（`src/dataset/shims/patch_shim.py`），需要为 `rel_depth` 增加同步中心裁剪逻辑，保持与 `image/masks/intrinsics` 对齐；必要时在 `src/dataset/types.py` 补充可选字段，明确 `rel_depth` 的张量形状。
+2. **渲染深度结果**：
+   - 当前 `DecoderSplattingCUDA` 已支持 `depth_mode` 并在非空时返回 `DecoderOutput.depth`，因此可直接复用渲染深度输出。
+   - 在 `ModelWrapper.test_step` 与 `run_full_test_sets_eval` 中，当 `target` 包含 `rel_depth` 且需要计算 PCC 时，将 `decoder.forward(..., depth_mode="depth")`（或与 DepthSplat 一致的深度模式）以得到 `output.depth`；若启用 chunk 渲染，需确保拼接 `output.depth` 与 `output.color` 一致。
+3. **PCC 计算方式**：
+   - 在 `src/evaluation/metrics.py` 中新增 `get_pcc/compute_pcc`，使用 `torchmetrics.PearsonCorrCoef` 计算相关系数，输入为 `rel_depth` 与 `output.depth` 的展平结果（与 DepthSplat 完全一致）。
+   - 在 `ModelWrapper.test_step` 和 `run_full_test_sets_eval` 内，与 PSNR/SSIM/LPIPS 同位置增加 PCC 计算；仅当 `rel_depth` 与 `output.depth` 同时存在时触发。
+4. **PCC 统计与汇总**：
+   - 复用现有 `test_step_outputs` 与 `on_test_end` 的汇总逻辑，新增 `pcc` key，输出 `scores_pcc_all.json` 并写入 `scores_all_avg.json`。
+   - `run_full_test_sets_eval` 的 `scores_dict` 新增 `pcc` 分支，与 `psnr/ssim/lpips` 同级记录并 log 到 `test/pcc`，保持统计方式一致。
+
 ## 小结
 OmniScene 的整体实现可以基于 DepthSplat 的成熟代码迁移到 VolSplat：配置层面保持与 re10k 相同的模型/优化器设置，仅针对 batch size、分辨率与训练节奏做覆盖；数据层面复刻 DepthSplat 的加载逻辑并补全 mask 的 shim；主程序层面增加可选的动态掩码开关和 OmniScene 专用的 eval 行为。待本规划通过审阅后，再按本文档的步骤依次提交配置、数据集类与主程序改动，即可在 VolSplat 的 `comp_svfgs` 分支开启 OmniScene 实验，与自研方法进行公平对比。

@@ -39,7 +39,8 @@ def load_conditions(
     img_paths: list[str],
     resolution: Tuple[int, int],
     is_input: bool,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    load_rel_depth: bool = False,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor | None]:
     def _maybe_resize(image: Image.Image, ck: np.ndarray):
         resize_flag = False
         if image.height != resolution[0] or image.width != resolution[1]:
@@ -53,6 +54,7 @@ def load_conditions(
         return np.array(image), ck, resize_flag
 
     images, intrinsics, masks = [], [], []
+    rel_depths = [] if load_rel_depth else None
     for img_path in img_paths:
         param_path = (
             img_path.replace("samples", "samples_param_small")
@@ -72,6 +74,24 @@ def load_conditions(
         images.append(_hwc3(image_np))
         intrinsics.append(ck)
 
+        if load_rel_depth:
+            depth_path = (
+                actual_img_path.replace("sweeps_small", "sweeps_dpt_small")
+                .replace("samples_small", "samples_dpt_small")
+                .replace(".jpg", ".npy")
+            )
+            disp = np.load(depth_path).astype(np.float32)
+            if resized:
+                disp = Image.fromarray(disp)
+                disp = disp.resize((resolution[1], resolution[0]), Image.BILINEAR)
+                disp = np.array(disp)
+            ratio = min(disp.max() / (disp.min() + 0.001), 50.0)
+            max_val = disp.max()
+            min_val = max_val / ratio
+            depth = 1.0 / np.maximum(disp, min_val)
+            depth = (depth - depth.min()) / (depth.max() - depth.min())
+            rel_depths.append(depth)
+
         if is_input:
             mask = np.ones(resolution, dtype=np.float32)
         else:
@@ -89,4 +109,9 @@ def load_conditions(
     images = torch.from_numpy(np.stack(images, axis=0)).permute(0, 3, 1, 2).float() / 255.0
     intrinsics = torch.as_tensor(np.stack(intrinsics, axis=0), dtype=torch.float32)
     masks = torch.from_numpy(np.stack(masks, axis=0)).bool()
-    return images, masks, intrinsics
+    rel_depths_tensor = (
+        None
+        if rel_depths is None
+        else torch.from_numpy(np.stack(rel_depths, axis=0)).float()
+    )
+    return images, masks, intrinsics, rel_depths_tensor
