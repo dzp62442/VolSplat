@@ -32,7 +32,14 @@ checkpointing.pretrained_model=checkpoints/omniscene-112x200-volsplat-base/check
 output_dir=outputs/omniscene-112x200-volsplat-base
 ```
 
-根据需求可额外启用 `test.save_image=true`、`test.save_gaussian=true` 等开关以导出可视化结果或点云。
+- 保存可视化结果
+```bash
+test.save_image=true \
+test.save_gt_image=true \
+test.save_depth=true \
+test.save_gaussian=true \
+test.save_video=true
+```
 
 ---
 
