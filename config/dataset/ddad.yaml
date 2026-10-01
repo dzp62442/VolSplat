@@ -1,0 +1,14 @@
+defaults:
+  - view_sampler: all
+
+name: ddad
+roots: [datasets/DDAD]
+processed_root: null
+image_shape: [224, 400]
+background_color: [0.0, 0.0, 0.0]
+cameras_are_circular: false
+near: 0.5
+far: 100.0
+compute_pcc: true
+eval_use_ego_mask: true
+ego_mask_manifest: ego_masks/vidar_v1/manifest.json

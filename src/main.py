@@ -95,13 +95,15 @@ def train(cfg_dict: DictConfig):
         dataset_name = cfg_dict["dataset"]["name"]
         if dataset_name == "omniscene":
             eval_cfg = load_typed_root_config(eval_cfg_dict)
+        elif dataset_name in ("pandaset", "ddad"):
+            eval_cfg = load_typed_root_config(eval_cfg_dict)
         elif "re10k" in dataset_dir:
             eval_path = "assets/evaluation_index_re10k.json"
         elif "scannet" in dataset_dir:
             eval_path = "assets/evaluation_index_scannet_3views.json"
         else:
             raise Exception("Fail to load eval index path")
-        if dataset_name != "omniscene":
+        if dataset_name not in ("omniscene", "pandaset", "ddad"):
             eval_cfg_dict["dataset"]["view_sampler"] = {
                 "name": "evaluation",
                 "index_path": eval_path,
@@ -147,6 +149,9 @@ def train(cfg_dict: DictConfig):
 
         if wandb.run is not None:
             wandb.run.log_code("src")
+    elif cfg.dataset.name in ("pandaset", "ddad"):
+        from src.misc.temporal18_logger import Temporal18LocalLogger
+        logger = Temporal18LocalLogger(output_dir)
     else:
         logger = LocalLogger()
 
@@ -218,7 +223,14 @@ def train(cfg_dict: DictConfig):
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
 
-    model_wrapper = ModelWrapper(
+    wrapper_class = ModelWrapper
+    wrapper_kwargs = {}
+    if cfg.dataset.name in ("pandaset", "ddad"):
+        from src.model.model_wrapper_temporal18 import ModelWrapperTemporal18
+        wrapper_class = ModelWrapperTemporal18
+        wrapper_kwargs["dataset_cfg"] = cfg.dataset
+
+    model_wrapper = wrapper_class(
         cfg.optimizer,
         cfg.test,
         cfg.train,
@@ -230,6 +242,7 @@ def train(cfg_dict: DictConfig):
         eval_data_cfg=(
             None if eval_cfg is None else eval_cfg.dataset
         ),
+        **wrapper_kwargs,
     )
 
     data_module = DataModule(

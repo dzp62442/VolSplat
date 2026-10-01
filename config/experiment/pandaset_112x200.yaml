@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - omniscene_112x200
+  - override /dataset: pandaset
+  - _self_
+
+model:
+  encoder:
+    num_scales: 2
+    upsample_factor: 2
+    lowest_feature_resolution: 4
+    monodepth_vit_type: vitb
+
+dataset:
+  roots: [datasets/PandaSet]
+
+train:
+  use_dynamic_mask: false
+
+wandb:
+  name: pandaset_112x200
+  tags: [pandaset, 112x200, temporal18]
+
+output_dir: checkpoints/pandaset-112x200-volsplat-base
+test:
+  output_path: ${output_dir}/metrics
+
+hydra:
+  run:
+    dir: ${output_dir}/hydra/${now:%Y-%m-%d_%H-%M-%S}

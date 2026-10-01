@@ -41,6 +41,17 @@ test.save_gaussian=true \
 test.save_video=true
 ```
 
+### PandaSet / DDAD 零样本泛化
+
+以下配置使用上面的 nuScenes Base 权重，不进行目标域训练：
+
+```bash
+python -m src.main +experiment=pandaset_112x200_zero_shot
+python -m src.main +experiment=ddad_112x200_zero_shot
+```
+
+两者均报告 `all_18 / novel_12 / input_6`。DDAD 的自车掩码用于所有评估阶段的前 12 个新视角，后 6 个输入视角保持全图。
+
 ---
 
 <p align="center">

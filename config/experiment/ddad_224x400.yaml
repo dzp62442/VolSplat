@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - omniscene_224x400
+  - override /dataset: ddad
+  - _self_
+
+model:
+  encoder:
+    num_scales: 2
+    upsample_factor: 2
+    lowest_feature_resolution: 4
+    monodepth_vit_type: vitb
+
+dataset:
+  roots: [datasets/DDAD]
+
+train:
+  use_dynamic_mask: false
+
+wandb:
+  name: ddad_224x400
+  tags: [ddad, 224x400, temporal18]
+
+output_dir: checkpoints/ddad-224x400-volsplat-base
+test:
+  output_path: ${output_dir}/metrics
+
+hydra:
+  run:
+    dir: ${output_dir}/hydra/${now:%Y-%m-%d_%H-%M-%S}

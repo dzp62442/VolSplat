@@ -1,0 +1,14 @@
+# @package _global_
+defaults:
+  - pandaset_112x200
+  - _self_
+
+mode: test
+checkpointing:
+  pretrained_model: checkpoints/omniscene-112x200-volsplat-base/checkpoints/epoch_0-step_100000.ckpt
+  resume: false
+# Source resolution describes the checkpoint, not the target evaluation size.
+source_checkpoint:
+  dataset: omniscene_nuscenes
+  training_resolution: [112, 200]
+output_dir: outputs/zero_shot/nuscenes_to_pandaset_112x200_base
